@@ -1,0 +1,6 @@
+[14/11/2025 10:35:30] Inicializa sistema e carrega dados
+[14/11/2025 10:36:00] Cadastro de novo contato: Jorge Utermoehl
+[14/11/2025 10:36:00] Salva dados no arquivo
+[14/11/2025 10:36:02] Listou contatos
+[14/11/2025 10:38:19] Edita contato ID 1 - 5
+[14/11/2025 10:38:19] Salva dados no arquivo
