@@ -3,7 +3,7 @@
 **Nome dos integrantes:**
 
 - Jorge Utermoehl – RA: 1123739
-- LucLucas iarcheski   – RA: 1138931
+- Lucas iarcheski   – RA: 1138931
 
 **Atividade Avaliativa (GRUPO)**
 
