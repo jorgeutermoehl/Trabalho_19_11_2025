@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'dados')
@@ -63,15 +64,56 @@ def _proximo_id(dados):
         return len(dados) + 1
 
 
+def validar_nome(nome: str) -> bool:
+    nome = nome.strip()
+    if len(nome) < 3:
+        print('Nome deve ter pelo menos 3 caracteres.')
+        return False
+    if any(ch.isdigit() for ch in nome):
+        print('Nome não deve conter números.')
+        return False
+    return True
+
+
+def validar_email(email: str) -> bool:
+    email = email.strip()
+    if not email:
+        print('E-mail não pode ser vazio.')
+        return False
+    padrao = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+    if not re.match(padrao, email):
+        print('E-mail em formato inválido.')
+        return False
+    return True
+
+
+def validar_telefone(telefone: str) -> bool:
+    telefone = telefone.strip()
+    if not telefone:
+        print('Telefone não pode ser vazio.')
+        return False
+    digitos = re.sub(r'\D', '', telefone)
+    if len(digitos) < 8 or len(digitos) > 11:
+        print('Telefone deve ter entre 8 e 11 dígitos.')
+        return False
+    return True
+
+
 def cadastrar_contato(dados):
     print('\n--- Cadastro de Novo Contato ---')
     try:
-        nome = input('Nome: ').strip()
-        telefone = input('Telefone: ').strip()
-        email = input('E-mail: ').strip()
-        if not nome:
-            print('Nome não pode ser vazio. Cadastro cancelado.')
-            return
+        while True:
+            nome = input('Nome: ').strip()
+            if validar_nome(nome):
+                break
+        while True:
+            telefone = input('Telefone: ').strip()
+            if validar_telefone(telefone):
+                break
+        while True:
+            email = input('E-mail: ').strip()
+            if validar_email(email):
+                break
         novo = {
             'id': _proximo_id(dados),
             'nome': nome,
@@ -119,9 +161,34 @@ def editar_contato(dados):
             print('Contato não encontrado.')
             return
         print(f"Editando contato: {contato.get('nome')}")
-        novo_nome = input(f"Novo nome [{contato.get('nome')}]: ").strip() or contato.get('nome')
-        novo_tel = input(f"Novo telefone [{contato.get('telefone')}]: ").strip() or contato.get('telefone')
-        novo_email = input(f"Novo e-mail [{contato.get('email')}]: ").strip() or contato.get('email')
+        # Nome
+        while True:
+            entrada = input(f"Novo nome [{contato.get('nome')}]: ").strip()
+            if not entrada:
+                novo_nome = contato.get('nome')
+                break
+            if validar_nome(entrada):
+                novo_nome = entrada
+                break
+        # Telefone
+        while True:
+            entrada = input(f"Novo telefone [{contato.get('telefone')}]: ").strip()
+            if not entrada:
+                novo_tel = contato.get('telefone')
+                break
+            if validar_telefone(entrada):
+                novo_tel = entrada
+                break
+        # E-mail
+        while True:
+            entrada = input(f"Novo e-mail [{contato.get('email')}]: ").strip()
+            if not entrada:
+                novo_email = contato.get('email')
+                break
+            if validar_email(entrada):
+                novo_email = entrada
+                break
+
         contato['nome'] = novo_nome
         contato['telefone'] = novo_tel
         contato['email'] = novo_email
@@ -153,3 +220,4 @@ def excluir_contato(dados):
     except Exception as e:
         print('Erro ao excluir contato:', e)
         registrar_log(f'Erro ao excluir contato: {e}')
+
