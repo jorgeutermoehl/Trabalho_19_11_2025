@@ -1,11 +1,25 @@
+import hashlib
 import json
 import os
 import re
 from datetime import datetime
+from getpass import getpass
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'dados')
 CONTATOS_FILE = os.path.join(DATA_DIR, 'contatos.json')
 LOG_FILE = os.path.join(DATA_DIR, 'log.txt')
+
+
+def _estrutura_padrao():
+    return {'usuarios': [], 'contatos': []}
+
+
+def _ler_senha(mensagem: str) -> str:
+    try:
+        return getpass(mensagem)
+    except Exception:
+        # Fallback para ambientes sem suporte ao getpass
+        return input(mensagem)
 
 
 def _garantir_arquivos():
@@ -15,7 +29,7 @@ def _garantir_arquivos():
         pass
     if not os.path.exists(CONTATOS_FILE):
         with open(CONTATOS_FILE, 'w', encoding='utf-8') as f:
-            json.dump([], f, ensure_ascii=False, indent=2)
+            json.dump(_estrutura_padrao(), f, ensure_ascii=False, indent=2)
     if not os.path.exists(LOG_FILE):
         open(LOG_FILE, 'a', encoding='utf-8').close()
 
@@ -31,15 +45,46 @@ def registrar_log(acao: str):
         pass
 
 
+def hash_senha(senha: str) -> str:
+    return hashlib.sha256(senha.encode('utf-8')).hexdigest()
+
+
+def _usuario_padrao():
+    return {
+        'id': 1,
+        'nome': 'Administrador',
+        'login': 'admin',
+        'senha_hash': hash_senha('admin'),
+        'criado_em': datetime.now().isoformat(),
+    }
+
+
+def _migrar_dados_legados(contatos_antigos):
+    dados = _estrutura_padrao()
+    if contatos_antigos:
+        usuario = _usuario_padrao()
+        dados['usuarios'].append(usuario)
+        for contato in contatos_antigos:
+            contato['usuario_id'] = usuario['id']
+        dados['contatos'] = contatos_antigos
+        print('Estrutura migrada. Use login "admin" e senha "admin" para ver os contatos existentes.')
+        registrar_log('Migra estrutura legada para modelo com usuarios')
+    return dados
+
+
 def carregar_dados():
     _garantir_arquivos()
     try:
         with open(CONTATOS_FILE, 'r', encoding='utf-8') as f:
             dados = json.load(f)
-            if not isinstance(dados, list):
-                dados = []
     except Exception:
-        dados = []
+        dados = _estrutura_padrao()
+    if isinstance(dados, list):
+        dados = _migrar_dados_legados(dados)
+    elif not isinstance(dados, dict):
+        dados = _estrutura_padrao()
+    dados.setdefault('usuarios', [])
+    dados.setdefault('contatos', [])
     registrar_log('Inicializa sistema e carrega dados')
     return dados
 
@@ -54,14 +99,89 @@ def salvar_dados(dados):
         registrar_log(f'Erro ao salvar dados: {e}')
 
 
-def _proximo_id(dados):
-    if not dados:
+def _proximo_id(itens):
+    if not itens:
         return 1
     try:
-        ids = [int(item.get('id', 0)) for item in dados]
+        ids = [int(item.get('id', 0)) for item in itens if item.get('id') is not None]
         return max(ids) + 1
     except Exception:
-        return len(dados) + 1
+        return len(itens) + 1
+
+
+def _obter_usuario_por_login(dados, login: str):
+    login = login.lower()
+    for usuario in dados.get('usuarios', []):
+        if str(usuario.get('login', '')).lower() == login:
+            return usuario
+    return None
+
+
+def cadastrar_usuario(dados):
+    print('\n--- Cadastro de Usuario ---')
+    try:
+        while True:
+            nome = input('Nome completo: ').strip()
+            if validar_nome(nome):
+                break
+        while True:
+            login = input('Login desejado: ').strip()
+            if len(login) < 3:
+                print('Login deve ter pelo menos 3 caracteres.')
+                continue
+            if not re.match(r'^[\w\.-]+$', login):
+                print('Use apenas letras, numeros, ponto, traco ou underline.')
+                continue
+            if _obter_usuario_por_login(dados, login):
+                print('Login indisponivel. Tente outro.')
+                continue
+            break
+        while True:
+            senha = _ler_senha('Senha: ').strip()
+            if len(senha) < 4:
+                print('Senha deve ter pelo menos 4 caracteres.')
+                continue
+            confirma = _ler_senha('Confirme a senha: ').strip()
+            if senha != confirma:
+                print('As senhas nao conferem.')
+                continue
+            break
+        usuario = {
+            'id': _proximo_id(dados.get('usuarios', [])),
+            'nome': nome,
+            'login': login,
+            'senha_hash': hash_senha(senha),
+            'criado_em': datetime.now().isoformat(),
+        }
+        dados.setdefault('usuarios', []).append(usuario)
+        registrar_log(f'Cadastro de usuario: {login}')
+        print('Usuario cadastrado com sucesso!')
+        return True
+    except Exception as e:
+        print('Erro ao cadastrar usuario:', e)
+        registrar_log(f'Erro ao cadastrar usuario: {e}')
+        return False
+
+
+def autenticar_usuario(dados):
+    print('\n--- Login ---')
+    login = input('Login: ').strip()
+    if not login:
+        print('Informe o login.')
+        return None
+    senha = _ler_senha('Senha: ').strip()
+    usuario = _obter_usuario_por_login(dados, login)
+    if not usuario:
+        print('Usuario nao encontrado.')
+        registrar_log(f'Tentativa de login invalida: {login}')
+        return None
+    if usuario.get('senha_hash') != hash_senha(senha):
+        print('Senha incorreta.')
+        registrar_log(f'Senha incorreta para usuario: {login}')
+        return None
+    print(f'Bem-vindo, {usuario.get("nome")}')
+    registrar_log(f'Login efetuado por: {login}')
+    return usuario
 
 
 def validar_nome(nome: str) -> bool:
@@ -70,7 +190,7 @@ def validar_nome(nome: str) -> bool:
         print('Nome deve ter pelo menos 3 caracteres.')
         return False
     if any(ch.isdigit() for ch in nome):
-        print('Nome não deve conter números.')
+        print('Nome nao deve conter numeros.')
         return False
     return True
 
@@ -78,11 +198,11 @@ def validar_nome(nome: str) -> bool:
 def validar_email(email: str) -> bool:
     email = email.strip()
     if not email:
-        print('E-mail não pode ser vazio.')
+        print('E-mail nao pode ser vazio.')
         return False
     padrao = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     if not re.match(padrao, email):
-        print('E-mail em formato inválido.')
+        print('E-mail em formato invalido.')
         return False
     return True
 
@@ -90,16 +210,24 @@ def validar_email(email: str) -> bool:
 def validar_telefone(telefone: str) -> bool:
     telefone = telefone.strip()
     if not telefone:
-        print('Telefone não pode ser vazio.')
+        print('Telefone nao pode ser vazio.')
         return False
     digitos = re.sub(r'\D', '', telefone)
     if len(digitos) < 8 or len(digitos) > 11:
-        print('Telefone deve ter entre 8 e 11 dígitos.')
+        print('Telefone deve ter entre 8 e 11 digitos.')
         return False
     return True
 
 
-def cadastrar_contato(dados):
+def _contatos_do_usuario(dados, usuario_id):
+    return [
+        contato
+        for contato in dados.get('contatos', [])
+        if contato.get('usuario_id') == usuario_id
+    ]
+
+
+def cadastrar_contato(dados, usuario):
     print('\n--- Cadastro de Novo Contato ---')
     try:
         while True:
@@ -115,53 +243,55 @@ def cadastrar_contato(dados):
             if validar_email(email):
                 break
         novo = {
-            'id': _proximo_id(dados),
+            'id': _proximo_id(dados.get('contatos', [])),
+            'usuario_id': usuario.get('id'),
             'nome': nome,
             'telefone': telefone,
             'email': email,
         }
-        dados.append(novo)
-        registrar_log(f'Cadastro de novo contato: {nome}')
+        dados.setdefault('contatos', []).append(novo)
+        registrar_log(f'Cadastro de contato por {usuario.get("login")}: {nome}')
         print('Cadastro realizado com sucesso!')
     except Exception as e:
         print('Ocorreu um erro ao cadastrar:', e)
         registrar_log(f'Erro no cadastro: {e}')
 
 
-def listar_contatos(dados):
+def listar_contatos(dados, usuario):
     print('\n--- Lista de Contatos ---')
-    if not dados:
-        print('Nenhum contato cadastrado.')
+    contatos = _contatos_do_usuario(dados, usuario.get('id'))
+    if not contatos:
+        print('Nenhum contato cadastrado para este usuario.')
         return
-    for c in dados:
+    for c in contatos:
         print(f"ID: {c.get('id')} | Nome: {c.get('nome')} | Telefone: {c.get('telefone')} | E-mail: {c.get('email')}")
-    print(f"\nTotal de contatos: {len(dados)}")
-    registrar_log('Listou contatos')
+    print(f"\nTotal de contatos: {len(contatos)}")
+    registrar_log(f'Listou contatos ({usuario.get("login")})')
 
 
-def _encontrar_por_id(dados, id_busca):
-    for item in dados:
+def _encontrar_por_id(contatos, id_busca, usuario_id):
+    for item in contatos:
         try:
-            if int(item.get('id')) == int(id_busca):
+            if int(item.get('id')) == int(id_busca) and item.get('usuario_id') == usuario_id:
                 return item
         except Exception:
             continue
     return None
 
 
-def editar_contato(dados):
+def editar_contato(dados, usuario):
     print('\n--- Editar Contato ---')
-    if not dados:
+    contatos = _contatos_do_usuario(dados, usuario.get('id'))
+    if not contatos:
         print('Nenhum contato para editar.')
         return
     try:
         id_str = input('Informe o ID do contato a editar: ').strip()
-        contato = _encontrar_por_id(dados, id_str)
+        contato = _encontrar_por_id(dados.get('contatos', []), id_str, usuario.get('id'))
         if not contato:
-            print('Contato não encontrado.')
+            print('Contato nao encontrado.')
             return
         print(f"Editando contato: {contato.get('nome')}")
-        # Nome
         while True:
             entrada = input(f"Novo nome [{contato.get('nome')}]: ").strip()
             if not entrada:
@@ -170,7 +300,6 @@ def editar_contato(dados):
             if validar_nome(entrada):
                 novo_nome = entrada
                 break
-        # Telefone
         while True:
             entrada = input(f"Novo telefone [{contato.get('telefone')}]: ").strip()
             if not entrada:
@@ -179,7 +308,6 @@ def editar_contato(dados):
             if validar_telefone(entrada):
                 novo_tel = entrada
                 break
-        # E-mail
         while True:
             entrada = input(f"Novo e-mail [{contato.get('email')}]: ").strip()
             if not entrada:
@@ -192,32 +320,32 @@ def editar_contato(dados):
         contato['nome'] = novo_nome
         contato['telefone'] = novo_tel
         contato['email'] = novo_email
-        registrar_log(f'Edita contato ID {contato.get("id")} - {contato.get("nome")}')
+        registrar_log(f'Edita contato ID {contato.get("id")} - {usuario.get("login")}')
         print('Contato atualizado com sucesso!')
     except Exception as e:
         print('Erro ao editar contato:', e)
         registrar_log(f'Erro ao editar contato: {e}')
 
 
-def excluir_contato(dados):
+def excluir_contato(dados, usuario):
     print('\n--- Excluir Contato ---')
-    if not dados:
+    contatos = _contatos_do_usuario(dados, usuario.get('id'))
+    if not contatos:
         print('Nenhum contato para excluir.')
         return
     try:
         id_str = input('Informe o ID do contato a excluir: ').strip()
-        contato = _encontrar_por_id(dados, id_str)
+        contato = _encontrar_por_id(dados.get('contatos', []), id_str, usuario.get('id'))
         if not contato:
-            print('Contato não encontrado.')
+            print('Contato nao encontrado.')
             return
-        confirma = input(f"Confirma exclusão de '{contato.get('nome')}'? (s/N): ").strip().lower()
+        confirma = input(f"Confirma exclusao de '{contato.get('nome')}'? (s/N): ").strip().lower()
         if confirma == 's':
-            dados.remove(contato)
-            registrar_log(f'Exclui contato ID {contato.get("id")} - {contato.get("nome")}')
-            print('Contato excluído com sucesso!')
+            dados.get('contatos', []).remove(contato)
+            registrar_log(f'Exclui contato ID {contato.get("id")} - {usuario.get("login")}')
+            print('Contato excluido com sucesso!')
         else:
-            print('Exclusão cancelada.')
+            print('Exclusao cancelada.')
     except Exception as e:
         print('Erro ao excluir contato:', e)
         registrar_log(f'Erro ao excluir contato: {e}')
-

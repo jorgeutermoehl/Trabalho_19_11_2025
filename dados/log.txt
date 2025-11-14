@@ -4,3 +4,14 @@
 [14/11/2025 10:36:02] Listou contatos
 [14/11/2025 10:38:19] Edita contato ID 1 - 5
 [14/11/2025 10:38:19] Salva dados no arquivo
+[14/11/2025 18:32:03] Migra estrutura legada para modelo com usuarios
+[14/11/2025 18:32:03] Inicializa sistema e carrega dados
+[14/11/2025 18:32:11] Tentativa de login invalida: 1
+[14/11/2025 18:32:34] Cadastro de usuario: Lucas-tEST
+[14/11/2025 18:32:34] Salva dados no arquivo
+[14/11/2025 18:32:58] Login efetuado por: Lucas-tEST
+[14/11/2025 18:33:18] Cadastro de contato por Lucas-tEST: JORGE
+[14/11/2025 18:33:18] Salva dados no arquivo
+[14/11/2025 18:33:22] Listou contatos (Lucas-tEST)
+[14/11/2025 18:33:27] Listou contatos (Lucas-tEST)
+[14/11/2025 18:33:28] Listou contatos (Lucas-tEST)
