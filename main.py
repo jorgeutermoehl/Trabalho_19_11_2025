@@ -6,8 +6,17 @@ from funcoes import (
     editar_contato,
     excluir_contato,
     listar_contatos,
-    salvar_dados,
+    registrar_log,
 )
+
+
+def _executar_acao(descricao, funcao, *args, **kwargs):
+    try:
+        return funcao(*args, **kwargs)
+    except Exception as exc:
+        print(f'Ocorreu um erro durante {descricao}: {exc}')
+        registrar_log(f'Erro durante {descricao}: {exc}')
+        return None
 
 
 def painel_contatos(dados, usuario):
@@ -23,16 +32,13 @@ def painel_contatos(dados, usuario):
 
         escolha = input('Escolha uma opcao (1-5): ').strip()
         if escolha == '1':
-            cadastrar_contato(dados, usuario)
-            salvar_dados(dados)
+            _executar_acao('o cadastro de contato', cadastrar_contato, dados, usuario)
         elif escolha == '2':
             listar_contatos(dados, usuario)
         elif escolha == '3':
-            editar_contato(dados, usuario)
-            salvar_dados(dados)
+            _executar_acao('a edicao de contato', editar_contato, dados, usuario)
         elif escolha == '4':
-            excluir_contato(dados, usuario)
-            salvar_dados(dados)
+            _executar_acao('a exclusao de contato', excluir_contato, dados, usuario)
         elif escolha == '5':
             print('Saindo da conta atual.')
             break
@@ -56,8 +62,7 @@ def menu():
             if usuario:
                 painel_contatos(dados, usuario)
         elif escolha == '2':
-            if cadastrar_usuario(dados):
-                salvar_dados(dados)
+            _executar_acao('o cadastro de usuario', cadastrar_usuario, dados)
         elif escolha == '3':
             print('Saindo. Obrigado por usar a agenda!')
             break
