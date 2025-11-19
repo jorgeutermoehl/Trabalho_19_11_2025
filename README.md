@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Transformação de Horas (Texto → Número)
 
 Notebook do trabalho de Pensamento Computacional / Ciência de Dados.
@@ -32,3 +33,39 @@ Este projeto converte respostas textuais sobre horas de trabalho/estudo e horas 
 ## Ferramentas usadas
 
 - Python, Pandas, NumPy, Regex, Matplotlib
+=======
+# Agenda de Contatos
+
+**Nome dos integrantes:**
+
+- Jorge Utermoehl – RA: 1123739
+- Lucas iarcheski   – RA: 1138931
+
+**Atividade Avaliativa (GRUPO)**
+
+**Disciplina:** Pensamento Computacional
+
+**Data de Entrega:** 31/10/2025
+
+**Professor:** Augusto Kruger Ortolan
+
+**Tema escolhido:** Agenda de Contatos – nome, telefone e e-mail.
+
+**Objetivo:**
+Desenvolver sistema de cadastro de agenda e email. 
+
+**Tecnologias utilizadas:**
+- Python
+- Manipulação de arquivos (JSON e TXT)
+- Dicionários e listas
+- Funções e tratamento de exceções
+
+```
+python main.py
+```
+
+Arquivos de dados:
+
+- `dados/contatos.json` - armazena os contatos (lista de dicionários)
+- `dados/log.txt` - gravações das ações do usuário com data e hora
+>>>>>>> d38a0a98002c9a87f1e6a173a219a434467a8ab6
